@@ -1,62 +1,124 @@
 Write-Host '#################'
-Write-Host '# Starting madmax benchmark v0.1'
+Write-Host '# Starting madmax benchmark v0.2'
+Write-Host '#'
+Write-Host '# Make sure you have plenty of space on your destination drive and that your tmp drives have 250GB free.'
 Write-Host '#################'
 
+$farmerKey = '[PUT YOUR KEY HERE]'
+$poolKey = '[PUT YOUR KEY HERE]'
+
+$drives = @('G:\ChiaTmp\', 'F:\ChiaTmp\', 'K:\ChiaTmp\')
+$buckets = @(32, 64, 128, 256, 512)
+$destDrive = 'E:\ChiaPlots\'
+$defaultDrive =  'F:\ChiaTmp\'
+
+$threadMin = 2
+$threadMax = 40
+$threadStep = 2
+
+$combineBucketsAndThreads = 'true' ## setting this to false will only run 35 times
+$runcount = 1
+
+## Note that these default variables need to be customized for you.
+## This current setup runs 110 times.  About 5 days!
+
+
+#######################
+# Functions
+#######################
+
+function TestBuckets {
+ param( [int]$threadCount)
+
+
+	Write-Host '****************'
+	Write-Host '* Starting bucket ladder'
+	Write-Host '****************'
+
+
+	# Perform iteration to create the same file in each folder
+	foreach ($b in $buckets) {
+
+		Write-Host '-----------'
+		Write-Host "Buckets: $b - $runcount"
+		Write-Host '-----------'
+		
+		Write-Host ".\chia_plot -r $threadCount -u $b -t $defaultDrive -2 $defaultDrive  -d $destDrive -f $farmerKey -p $poolKey"
+		.\chia_plot -r $threadCount -u $b -t $defaultDrive -2 $defaultDrive  -d $destDrive -f $farmerKey -p $poolKey
+		Write-Host '^^^'
+		$runcount++
+	}
+	return $runcount
+}
+#######################
+# End Functions
+#######################
+
+
+
+
+
+##only do this if you have more than one drive
+if($drives.length -gt 1){
+	
+	Write-Host '****************'
+	Write-Host '* Starting drive ladder to find your fastest drive combo.'
+	Write-Host '****************'
+
+	foreach ($d in $drives) {
+		foreach ($d2 in $drives) {
+			Write-Host '-----------'
+			Write-Host "Temp 1: $d Temp 2: $d2 - $runcount"
+			Write-Host '-----------'
+			
+
+			Write-Host ".\chia_plot -r 4 -t $d -2 $d2 -d $destDrive -f $farmerKey -p $poolKey"
+			.\chia_plot -r 4 -t $d -2 $d2 -d $destDrive -f $farmerKey -p $poolKey
+			Write-Host '^^^'
+			$runcount++
+		}
+	}
+}
+
+##threads and buckets are optionally combined by the $combineBucketsAndThreads variable
 Write-Host '****************'
 Write-Host '* Starting Thread ladder.'
 Write-Host '****************'
 
 
 
-for ($num = 2 ; $num -le 40 ; $num = $num+2){
-	Write-Host "## $num threads using G:"
-	.\chia_plot -r $num -t G:\ChiaTmp\ -2 G:\ChiaTmp\ -d E:\chiaPlots\ -f {your farmer key} -p {your pool key}
-}
-
-
-
-
-Write-Host '****************'
-Write-Host '* Starting bucket ladder'
-Write-Host '****************'
-
-
-# Create an array of buckets
-$buckets = @(32, 64, 128, 256, 512)
-
-# Perform iteration to create the same file in each folder
-foreach ($i in $buckets) {
-    Write-Host "########"
-	Write-Host "## $num buckets"
-	Write-Host "########"
+for ($num = $threadMin ; $num -le $threadMax; $num = $num + $threadStep){
 	
-	.\chia_plot -r 8 -u $num -t G:\ChiaTmp\ -2 G:\ChiaTmp\ -d E:\chiaPlots\ -f {your farmer key} -p {your pool key}
+	Write-Host '-----------'
+	Write-Host "Threads: $num - $runcount"
+	Write-Host '-----------'
+
+	if($combineBucketsAndThreads -eq 'true'){
+		$runcount = TestBuckets -threadCount $num
+	}else{
+		Write-Host ".\chia_plot -r $num -t $defaultDrive -2 $defaultDrive  -d $destDrive -f $farmerKey -p $poolKey"
+		.\chia_plot -r $num -t $defaultDrive -2 $defaultDrive  -d $destDrive -f $farmerKey -p $poolKey
+		Write-Host '^^^'
+		$runcount++
+	}
+}
+
+
+##if the buckets should run separately from the threads
+if($combineBucketsAndThreads -ne 'true'){
+	$runcount = TestBuckets -threadCount 4
 }
 
 
 
 
-Write-Host '****************'
-Write-Host '* Starting drive ladder.'
-Write-Host '****************'
 
-Write-Host '## Both G drive'
-.\chia_plot -r 8 -t G:\ChiaTmp\ -2 G:\ChiaTmp\ -d E:\chiaPlots\ -f {your farmer key} -p {your pool key}
 
-Write-Host '## Both F drive'
-.\chia_plot -r 8 -t F:\ChiaTmp\ -2 F:\ChiaTmp\ -d E:\chiaPlots\ -f {your farmer key} -p {your pool key}
 
-Write-Host '## Both K drives'
-.\chia_plot -r 8 -t K:\ChiaTmp\ -2 K:\ChiaTmp\ -d E:\chiaPlots\ -f {your farmer key} -p {your pool key}
+Write-Host '#################'
+Write-Host "# Completed: $runcount times."
+Write-Host '#'
+Write-Host '# Now look at all of that glorious data to see the best setting for your machine.'
+Write-Host '#################'
 
-Write-Host '## G and F drive'
-.\chia_plot -r 8 -t G:\ChiaTmp\ -2 F:\ChiaTmp\ -d E:\chiaPlots\ -f {your farmer key} -p {your pool key}
-
-Write-Host '## G and K drive'
-.\chia_plot -r 8 -t G:\ChiaTmp\ -2 K:\ChiaTmp\ -d E:\chiaPlots\ -f {your farmer key} -p {your pool key}
-
-Write-Host '## K and F drive'
-.\chia_plot -r 8 -t K:\ChiaTmp\ -2 F:\ChiaTmp\ -d E:\chiaPlots\ -f {your farmer key} -p {your pool key}
-
-Write-Host '## K and G drive'
-.\chia_plot -r 8 -t K:\ChiaTmp\ -2 G:\ChiaTmp\ -d E:\chiaPlots\ -f {your farmer key} -p {your pool key}
+read-host “Press ENTER to finish...”
